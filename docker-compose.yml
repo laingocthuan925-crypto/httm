@@ -1,0 +1,27 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: research_copilot
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d research_copilot"]
+      interval: 5s
+      retries: 10
+  api:
+    build: .
+    env_file: .env            # cp env.example .env rồi điền GEMINI_API_KEY
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/research_copilot
+    ports: ["8000:8000"]
+    depends_on:
+      db: { condition: service_healthy }
+    volumes: ["./app:/code/app"]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+volumes:
+  pgdata:
